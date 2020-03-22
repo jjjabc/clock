@@ -4,6 +4,7 @@ import (
 	"github.com/disintegration/imaging"
 	"github.com/jjjabc/clock/component"
 	"github.com/jjjabc/clock/layout"
+	"github.com/jjjabc/lcd"
 	"github.com/jjjabc/lcd/wbimage"
 	"image"
 	"image/png"
@@ -45,11 +46,10 @@ func (s *Screen) Render() image.Image {
 	mainImg := s.main.Render()
 	screenImg := imaging.Crop(mainImg, image.Rect(0, 0, s.bg.Bounds().Dx()-2, s.bg.Bounds().Dy()-2))
 	screenImg = imaging.Paste(s.bg, screenImg,image.Pt(1,1))
-	//lcd.Picture(screenImg)
-	err := saveImg(screenImg)
+/*	err := saveImg(screenImg)
 	if err != nil {
 		panic(err)
-	}
+	}*/
 	return screenImg
 }
 func (s *Screen) Run() {
@@ -57,14 +57,14 @@ func (s *Screen) Run() {
 		runner.Run()
 	}
 	n := s.main.Notify()
-	s.Render()
+	lcd.Picture(s.Render())
 	for {
 		select {
 		case _, isOpen :=<-n:
 			if !isOpen {
 				return
 			}
-			s.Render()
+			lcd.Picture(s.Render())
 		}
 	}
 }
