@@ -25,6 +25,7 @@ func (c *Clock) Notify() <-chan struct{} {
 func (c *Clock) Run() {
 	c.ticker = time.NewTicker(time.Minute)
 	go func() {
+		defer c.ticker.Stop()
 		for {
 			select {
 			case <-c.ticker.C:
@@ -35,7 +36,6 @@ func (c *Clock) Run() {
 }
 
 func (c *Clock) Destroy() {
-	c.ticker.Stop()
 	close(c.notify)
 }
 
