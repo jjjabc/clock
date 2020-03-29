@@ -48,7 +48,7 @@ func NewClock() *Clock {
 	if err != nil {
 		panic(err)
 	}
-	bg := wbimage.NewWB(image.Rect(0, 0, 79, 19))
+	bg := wbimage.NewWB(image.Rect(0, 0, 80, 19))
 	for i := range bg.Pix {
 		bg.Pix[i] = true
 	}
@@ -62,8 +62,8 @@ func NewClock() *Clock {
 }
 func (c *Clock) Render() (img image.Image) {
 	img = wbimage.Clone(c.imgBackGround)
-	img = tools.StringSrcPic(img.(*wbimage.WB), time.Now().Format("03:04"), 20, c.font, 1, -1)
-	img = tools.StringSrcPic(img.(*wbimage.WB), time.Now().Format("PM"), 10, c.font, 62, 9)
+	img, _ = tools.StringSrcPic(img.(*wbimage.WB), time.Now().Format("03:04"), 20, c.font, 1, -1)
+	img, _ = tools.StringSrcPic(img.(*wbimage.WB), time.Now().Format("PM"), 10, c.font, 62, 9)
 	return
 }
 

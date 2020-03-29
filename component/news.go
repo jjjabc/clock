@@ -5,8 +5,10 @@ package component
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"github.com/golang/freetype"
 	"github.com/golang/freetype/truetype"
 	"github.com/jjjabc/clock/tools"
 	"github.com/jjjabc/lcd/wbimage"
@@ -23,13 +25,42 @@ type News struct {
 	webClient *http.Client
 	news      []jdNewsItem
 	f         *truetype.Font
+	disString string
 }
 
+func NewNews() *News {
+	bg := wbimage.NewWB(image.Rect(0, 0, 126, 14))
+	for i := range bg.Pix {
+		bg.Pix[i] = true
+	}
+	fontBytes, err := ioutil.ReadFile("./resource/12.ttf")
+	if err != nil {
+		panic(err)
+	}
+	f, err := freetype.ParseFont(fontBytes)
+	if err != nil {
+		panic(err)
+	}
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	//state := c.Query("state")
+	client := &http.Client{Transport: tr}
+	return &News{notify: make(chan struct{}), img: bg, webClient: client, f: f}
+}
 func (n *News) Run() {
-	ticker := time.NewTicker(time.Minute)
+	ticker := time.NewTicker(5*time.Minute)
 	var cancelFun context.CancelFunc
 	var ctx context.Context
 	ctx, cancelFun = context.WithCancel(context.Background())
+	err := n.getNews()
+	if err != nil {
+		n.disString="错误:5分钟后重试（"+err.Error()+"）"
+	}
+	if wbImg, ok := n.img.(*wbimage.WB); ok {
+		n.disString = n.String()
+		go RollingBanner(ctx, n.String(), wbImg, 2, 12, n.f, 1, n.notify)
+	}
 	go func() {
 		defer ticker.Stop()
 		for {
@@ -37,13 +68,16 @@ func (n *News) Run() {
 			case <-ticker.C:
 				err := n.getNews()
 				if err != nil {
-					//todo push error
+					//todo 错误处理
+					//n.disString="错误:1分钟后重试（"+err.Error()+"）"
+				}
+				if n.disString == n.String() {
 					continue
 				}
 				cancelFun()
 				ctx, cancelFun = context.WithCancel(context.Background())
 				if wbImg, ok := n.img.(*wbimage.WB); ok {
-					go RollingBanner(ctx, n.String(), wbImg, 3, 12, n.f, 1, n.notify)
+					go RollingBanner(ctx, n.String(), wbImg, 2, 12, n.f, 1, n.notify)
 				}
 			}
 		}
@@ -51,11 +85,15 @@ func (n *News) Run() {
 }
 
 func (n News) String() string {
-
+	dis := ""
+	for _, item := range n.news {
+		dis = dis + item.Title + " " + item.Src + " " + item.Time + "    "
+	}
+	return dis
 }
 
 func (n *News) Render() image.Image {
-	panic("implement me")
+	return n.img
 }
 
 func (n *News) Bounds() image.Rectangle {
@@ -92,7 +130,6 @@ func (n *News) getNews() (err error) {
 		return
 	}
 	jdResp := wayJd{}
-	log.Printf(string(body))
 	err = json.Unmarshal(body, &jdResp)
 	if err != nil {
 		return
@@ -135,17 +172,34 @@ func RollingBanner(ctx context.Context, content string, wbImg *wbimage.WB, speed
 	default:
 
 	}
+	bg := wbimage.NewWB(wbImg.Bounds())
+	for i := range wbImg.Pix {
+		bg.Pix[i] = true
+	}
 	ticker := time.NewTicker(d)
 	x := 0
+	var pt image.Point
+	dst, pt := tools.StringSrcPic(bg, content, sizePx, f, x, y)
+	for i := range dst.Pix {
+		wbImg.Pix[i] = dst.Pix[i]
+	}
+	width := pt.X - 0
+	log.Printf("News:%s", content)
 	for {
 		defer ticker.Stop()
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			tools.StringSrcPic(wbImg, content, sizePx, f, x, y)
+			if x+width < 0 {
+				x = wbImg.Bounds().Max.X
+			}
+			dst, pt = tools.StringSrcPic(bg, content, sizePx, f, x, y)
+			for i := range dst.Pix {
+				wbImg.Pix[i] = dst.Pix[i]
+			}
 			notify <- struct{}{}
 		}
-		x = x + step
+		x = x - step
 	}
 }

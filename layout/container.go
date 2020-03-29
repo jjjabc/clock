@@ -82,7 +82,7 @@ func (c *Container) Render() (img image.Image) {
 				if maxDx < comImg.Bounds().Dx() {
 					maxDx = comImg.Bounds().Dx()
 				}
-				splitLine = imaging.Crop(image.Black, image.Rect(0, 0, 1, maxDx))
+				splitLine = imaging.Crop(image.Black, image.Rect(0, 0, maxDx, 1))
 			}
 		}
 		var isVertical bool
@@ -122,9 +122,9 @@ func appendImg(isVertical bool, src image.Image, elems ...image.Image) (dst imag
 			dx = dst.Bounds().Dx() - 1
 			//选择更宽的图片作为扩展后图片的宽
 			if dst.Bounds().Dx() < elems[i].Bounds().Dx() {
-				dx = elems[i].Bounds().Dx() - 1
+				dx = elems[i].Bounds().Dx()
 			}
-			dy = dst.Bounds().Dy() + elems[i].Bounds().Dy() - 1
+			dy = dst.Bounds().Dy() + elems[i].Bounds().Dy()
 		} else {
 			dy = dst.Bounds().Dy()
 			//选择更高的图片作为扩展后图片的高
@@ -138,7 +138,7 @@ func appendImg(isVertical bool, src image.Image, elems ...image.Image) (dst imag
 		dst = imaging.Paste(dst,p,image.Pt(0,0))
 		if isVertical {
 			//垂直下扩
-			dst = imaging.Paste(dst, elems[i], image.Pt(0, p.Bounds().Dy()-1))
+			dst = imaging.Paste(dst, elems[i], image.Pt(0, p.Bounds().Dy()))
 		} else {
 			//水平右扩
 			dst = imaging.Paste(dst, elems[i], image.Pt(p.Bounds().Dx(), 0))

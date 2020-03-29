@@ -8,7 +8,7 @@ import (
 	"log"
 )
 
-func StringSrcPic(src *wbimage.WB, str string, sizePx int, f *truetype.Font, x, y int)(dst *wbimage.WB) {
+func StringSrcPic(src *wbimage.WB, str string, sizePx int, f *truetype.Font, x, y int)(dst *wbimage.WB,endPos image.Point) {
 	dst=wbimage.Clone(src)
 	fg := image.Black
 	c := freetype.NewContext()
@@ -25,5 +25,6 @@ func StringSrcPic(src *wbimage.WB, str string, sizePx int, f *truetype.Font, x, 
 		log.Println(err)
 		return
 	}
+	endPos=image.Pt(pt.X.Round(),pt.Y.Round())
 	return
 }

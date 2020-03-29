@@ -37,34 +37,43 @@ func New12864ClockScreen() *Screen {
 	}*/
 	return &Screen{
 		main:
-		layout.NewContainer(layout.Horizontal,
-			&component.Weather{}, component.NewClock()),
+		layout.NewContainer(layout.Vertical,
+			layout.NewContainer(layout.Horizontal,
+				component.NewWeather(), component.NewClock()),
+			component.NewWeatherForecast(),
+			component.NewNews(),
+		),
 		bg: bg,
 	}
 }
 func (s *Screen) Render() image.Image {
 	mainImg := s.main.Render()
-	screenImg := imaging.Crop(mainImg, image.Rect(0, 0, s.bg.Bounds().Dx()-2, s.bg.Bounds().Dy()-2))
-	screenImg = imaging.Paste(s.bg, screenImg,image.Pt(1,1))
-/*	err := saveImg(screenImg)
-	if err != nil {
-		panic(err)
-	}*/
+	//screenImg := imaging.Crop(mainImg, image.Rect(0, 0, s.bg.Bounds().Dx(), s.bg.Bounds().Dy()))
+	screenImg := imaging.Paste(s.bg, mainImg, image.Pt(1, 1))
 	return screenImg
 }
 func (s *Screen) Run() {
-	if runner,ok:=s.main.(layout.Runner);ok{
+	if runner, ok := s.main.(layout.Runner); ok {
 		runner.Run()
 	}
 	n := s.main.Notify()
 	lcd.Picture(s.Render())
+	/*err := saveImg(s.Render())
+	if err != nil {
+		panic(err)
+	}*/
 	for {
 		select {
-		case _, isOpen :=<-n:
+		case _, isOpen := <-n:
 			if !isOpen {
 				return
 			}
 			lcd.Picture(s.Render())
+			/*err := saveImg(s.Render())
+			log.Printf("save")
+			if err != nil {
+				panic(err)
+			}*/
 		}
 	}
 }
