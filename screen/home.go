@@ -9,11 +9,36 @@ import (
 	"image"
 	"image/png"
 	"os"
+	"sync"
 )
 
+var (
+	panda1 = mustOpenImg("." + string(os.PathSeparator) + "resource" + string(os.PathSeparator) + "panda1.png")
+	panda2 = mustOpenImg("." + string(os.PathSeparator) + "resource" + string(os.PathSeparator) + "panda2.png")
+)
+
+func mustOpenImg(file string) image.Image {
+	img, err := imaging.Open(file)
+	if err != nil {
+		panic(err)
+	}
+	return img
+}
+
 type Screen struct {
-	main layout.Com
-	bg   *wbimage.WB
+	main  layout.Com
+	bg    *wbimage.WB
+	alert *wbimage.WB
+	mutex sync.Mutex
+	n     chan struct{}
+}
+
+func (s *Screen) Bounds() image.Rectangle {
+	return s.main.Bounds()
+}
+
+func (s *Screen) Notify() <-chan struct{} {
+	panic("implement me")
 }
 
 func New12864ClockScreen() *Screen {
@@ -42,14 +67,21 @@ func New12864ClockScreen() *Screen {
 				component.NewWeather(), component.NewClock()),
 			component.NewWeatherForecast(),
 			component.NewNews(),
+			component.NewStatusBar(),
 		),
 		bg: bg,
+		n:  make(chan struct{}),
 	}
 }
 func (s *Screen) Render() image.Image {
 	mainImg := s.main.Render()
 	//screenImg := imaging.Crop(mainImg, image.Rect(0, 0, s.bg.Bounds().Dx(), s.bg.Bounds().Dy()))
 	screenImg := imaging.Paste(s.bg, mainImg, image.Pt(1, 1))
+	s.mutex.Lock()
+	if s.alert != nil {
+		screenImg = imaging.Paste(screenImg, s.alert, image.Pt((screenImg.Bounds().Dx()-s.alert.Bounds().Dx())/2, (screenImg.Bounds().Dy()-s.alert.Bounds().Dy())/2))
+	}
+	s.mutex.Unlock()
 	return screenImg
 }
 func (s *Screen) Run() {
@@ -69,13 +101,34 @@ func (s *Screen) Run() {
 				return
 			}
 			lcd.Picture(s.Render())
-			/*err := saveImg(s.Render())
-			log.Printf("save")
-			if err != nil {
-				panic(err)
-			}*/
+		case <-s.n:
+			lcd.Picture(s.Render())
 		}
 	}
+}
+func (s *Screen) ShowAlert(text string) {
+	func() {
+		s.mutex.Lock()
+		defer s.mutex.Unlock()
+		alertImg := wbimage.NewWB(image.Rect(0, 0, 100, 50))
+		content := wbimage.NewWB(image.Rect(0, 0, 98, 48))
+		for i := range content.Pix {
+			content.Pix[i] = true
+		}
+		img := imaging.Paste(content, panda1, image.Pt(13, 13))
+		img = imaging.Paste(img, panda2, image.Pt(63, 13))
+		img = imaging.Paste(alertImg, img, image.Pt(1, 1))
+		s.alert = wbimage.Convert(img)
+	}()
+	s.n <- struct{}{}
+}
+func (s *Screen) HideAlert() {
+	func() {
+		s.mutex.Lock()
+		defer s.mutex.Unlock()
+		s.alert = nil
+	}()
+	s.n <- struct{}{}
 }
 func saveImg(image image.Image) (err error) {
 	f, err := os.Create("out.png")

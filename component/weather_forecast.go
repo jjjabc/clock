@@ -267,7 +267,7 @@ func (w *WeatherForecast) getForecast() (wfs []weatherForecastStatus, err error)
 		return
 	}
 	wsResp := heWeatherResp{}
-	log.Printf(string(body))
+	log.Printf("get forecast ok")
 	err = json.Unmarshal(body, &wsResp)
 	if err != nil {
 		return

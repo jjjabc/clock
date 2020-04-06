@@ -8,3 +8,5 @@ require (
 	github.com/jjjabc/lcd v0.0.2
 	github.com/stianeikeland/go-rpio/v4 v4.4.0
 )
+
+replace github.com/jjjabc/lcd v0.0.2 => ../rsbpi

@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"github.com/disintegration/imaging"
 	"github.com/golang/freetype"
 	"github.com/golang/freetype/truetype"
 	"github.com/jjjabc/clock/tools"
@@ -59,7 +60,7 @@ func (n *News) Run() {
 	}
 	if wbImg, ok := n.img.(*wbimage.WB); ok {
 		n.disString = n.String()
-		go RollingBanner(ctx, n.String(), wbImg, 2, 12, n.f, 1, n.notify)
+		go RollingBanner(ctx, n.String(), wbImg, 2, 12, n.f, 0, n.notify)
 	}
 	go func() {
 		defer ticker.Stop()
@@ -77,7 +78,7 @@ func (n *News) Run() {
 				cancelFun()
 				ctx, cancelFun = context.WithCancel(context.Background())
 				if wbImg, ok := n.img.(*wbimage.WB); ok {
-					go RollingBanner(ctx, n.String(), wbImg, 2, 12, n.f, 1, n.notify)
+					go RollingBanner(ctx, n.String(), wbImg, 2, 12, n.f, 0, n.notify)
 				}
 			}
 		}
@@ -172,18 +173,26 @@ func RollingBanner(ctx context.Context, content string, wbImg *wbimage.WB, speed
 	default:
 
 	}
+	var pt image.Point
+
 	bg := wbimage.NewWB(wbImg.Bounds())
 	for i := range wbImg.Pix {
 		bg.Pix[i] = true
 	}
+	_, pt = tools.StringSrcPic(bg, content, sizePx, f, 0, y)
+	width := pt.X - 0
+	contentImg := wbimage.NewWB(image.Rect(0,0,width,wbImg.Bounds().Dy()))
+	for i := range contentImg.Pix {
+		contentImg.Pix[i] = true
+	}
+	contentImg, _ = tools.StringSrcPic(contentImg, content, sizePx, f, 0, y)
 	ticker := time.NewTicker(d)
 	x := 0
-	var pt image.Point
-	dst, pt := tools.StringSrcPic(bg, content, sizePx, f, x, y)
+	dstNRGB:=imaging.Paste(bg,contentImg,image.Pt(x,y))
+	dst:=wbimage.Convert(dstNRGB)
 	for i := range dst.Pix {
 		wbImg.Pix[i] = dst.Pix[i]
 	}
-	width := pt.X - 0
 	log.Printf("News:%s", content)
 	for {
 		defer ticker.Stop()
@@ -194,7 +203,8 @@ func RollingBanner(ctx context.Context, content string, wbImg *wbimage.WB, speed
 			if x+width < 0 {
 				x = wbImg.Bounds().Max.X
 			}
-			dst, pt = tools.StringSrcPic(bg, content, sizePx, f, x, y)
+			dstNRGB:=imaging.Paste(bg,contentImg,image.Pt(x,y))
+			dst:=wbimage.Convert(dstNRGB)
 			for i := range dst.Pix {
 				wbImg.Pix[i] = dst.Pix[i]
 			}
