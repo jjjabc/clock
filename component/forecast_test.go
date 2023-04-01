@@ -7,6 +7,8 @@ import (
 	"image"
 	"image/png"
 	"io/ioutil"
+	"log"
+	"net/http"
 	"os"
 	"testing"
 	"time"
@@ -58,17 +60,17 @@ func TestWeatherForecast_Render(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	area:=wbimage.NewWB(image.Rect(0,0,20,5))
-	for i:=range area.Pix{
-		area.Pix[i]=true
+	area := wbimage.NewWB(image.Rect(0, 0, 20, 5))
+	for i := range area.Pix {
+		area.Pix[i] = true
 	}
 	r := &forecastItemRender{bg: bg,
-		tmpFont: tmpFont,
-		dateFont: dateFont,
-		maxIcon: maxIcon,
-		minIcon: minIcon,
+		tmpFont:          tmpFont,
+		dateFont:         dateFont,
+		maxIcon:          maxIcon,
+		minIcon:          minIcon,
 		negativeSignIcon: negativeSignIcon,
-		tmpFontArea:area}
+		tmpFontArea:      area}
 	img, err := r.renderItem(weatherForecastStatus{
 		Code:   100,
 		Date:   time.Now(),
@@ -83,4 +85,13 @@ func TestWeatherForecast_Render(t *testing.T) {
 	}
 	imaging.Save(img, "test.png")
 
+}
+func TestWeatherForecast_Run(t *testing.T) {
+	w := &Weather{webClient: &http.Client{}}
+
+	ws, err := w.getWeatherStatus()
+	if err != nil {
+		panic(err)
+	}
+	log.Println(ws)
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/jjjabc/clock/tools"
 	"image"
 	"image/png"
+	"io"
 	"io/ioutil"
 	"log"
 	"math"
@@ -22,8 +23,10 @@ import (
 	"github.com/jjjabc/lcd/wbimage"
 )
 
-const heweatherUrl = "https://free-api.heweather.net/s6/weather/now?location=dayi&key=b765a0cac14c42adb9cc517db0e6fc3a"
+const heweatherUrl = "https://devapi.qweather.com/v7/weather/now"
 const iconFolder = "." + string(os.PathSeparator) + "resource" + string(os.PathSeparator) + "weather" + string(os.PathSeparator)
+const key = "b765a0cac14c42adb9cc517db0e6fc3a"
+const location = "101270108"
 
 type Weather struct {
 	code      int
@@ -77,6 +80,10 @@ func (w *Weather) Bounds() image.Rectangle {
 func (w *Weather) Notify() <-chan struct{} {
 	return w.notify
 }
+func (w *Weather) renderErr(err error) error {
+	w.img, _ = tools.StringSrcPic(wbimage.NewWB(image.Rect(0, 0, 47, 19)), err.Error(), 12, w.font, 0, 0)
+	return nil
+}
 func (w *Weather) render(ws weaterStatus) error {
 	f, err := os.Open(iconFolder + ws.Icon)
 	if err != nil {
@@ -123,7 +130,8 @@ func (w *Weather) Run() {
 	}
 	_, err := draw()
 	if err != nil {
-		panic(err)
+		w.renderErr(err)
+		return
 	}
 	go func() {
 		defer ticker.Stop()
@@ -160,30 +168,45 @@ type heWeatherResp struct {
 	}
 }
 
+type heWeatherForecastRespV7 struct {
+	DailyForecast []struct {
+		CondCodeD string `json:"iconDay"`
+		TmpMax    string `json:"tempMax"`
+		TmpMin    string `json:"tempMin"`
+		Date      string `json:"fxDate"`
+	} `json:"daily"`
+}
+type heWeatherNowRespV7 struct {
+	Now struct {
+		Tmp       string `json:"temp"`
+		CondCodeD string `json:"icon"`
+	} `json:"now"`
+}
+
 func (w *Weather) getWeatherStatus() (ws weaterStatus, err error) {
-	resp, err := w.webClient.Get(heweatherUrl)
+	resp, err := w.webClient.Get(heweatherUrl + "?" + "location=" + location + "&" + "key=" + key)
 	if err != nil {
 		return
 	}
 	if resp.StatusCode != http.StatusOK {
 		err = fmt.Errorf("API Code:%d", resp.StatusCode)
 	}
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return
 	}
-	wsResp := heWeatherResp{}
+	wsResp := heWeatherNowRespV7{}
 	log.Printf("get weather ok")
 	err = json.Unmarshal(body, &wsResp)
 	if err != nil {
 		return
 	}
-	if len(wsResp.HeWeather6) != 1 {
+	/*	if len(wsResp.HeWeather6) != 1 {
 		err = fmt.Errorf("Resp error")
 		return
-	}
-	heWeather6 := wsResp.HeWeather6[0]
-	code, err := strconv.Atoi(heWeather6.Now.CondCode)
+	}*/
+	heWeather7 := wsResp
+	code, err := strconv.Atoi(heWeather7.Now.CondCodeD)
 	if err != nil {
 		return
 	}
@@ -192,7 +215,7 @@ func (w *Weather) getWeatherStatus() (ws weaterStatus, err error) {
 		ws = WSMap[999]
 	} else {
 		var tmp float64
-		tmp, err = strconv.ParseFloat(heWeather6.Now.Tmp, 10)
+		tmp, err = strconv.ParseFloat(heWeather7.Now.Tmp, 10)
 		ws.Tmp = int(math.Floor(tmp*100 + 0.5))
 	}
 	return

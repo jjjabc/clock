@@ -11,6 +11,7 @@ import (
 	"github.com/jjjabc/lcd/wbimage"
 	"image"
 	"image/png"
+	"io"
 	"io/ioutil"
 	"log"
 	"math"
@@ -20,7 +21,7 @@ import (
 	"time"
 )
 
-const heweatherForecastUrl = "https://free-api.heweather.net/s6/weather/forecast?location=dayi&key=b765a0cac14c42adb9cc517db0e6fc3a"
+const heWeatherForecastUrl = "https://devapi.qweather.com/v7/weather/3d"
 
 type WeatherForecast struct {
 	img        image.Image
@@ -92,7 +93,8 @@ func (w *WeatherForecast) Run() {
 	}
 	_, err := draw()
 	if err != nil {
-		panic(err)
+		w.renderErr(err)
+		return
 	}
 	imaging.Save(w.img, "wf.png")
 	go func() {
@@ -112,7 +114,10 @@ func (w *WeatherForecast) Run() {
 		}
 	}()
 }
-
+func (w *WeatherForecast) renderErr(err error) error {
+	//w.img, _ = tools.StringSrcPic(wbimage.NewWB(image.Rect(0, 0, 47, 19)), err.Error(), 12, w.font, 0, 0)
+	return nil
+}
 func (w *WeatherForecast) render(wfs []weatherForecastStatus) (err error) {
 	var img image.Image = wbimage.Clone(w.bg)
 	for i := range wfs {
@@ -194,7 +199,7 @@ func NewForecastItemRender() *forecastItemRender {
 		tmpFontArea:      area}
 }
 
-func (r *forecastItemRender) renderItem(wfs weatherForecastStatus, ) (img image.Image, err error) {
+func (r *forecastItemRender) renderItem(wfs weatherForecastStatus) (img image.Image, err error) {
 	f, err := os.Open(iconFolder + wfs.Icon)
 	if err != nil {
 		return
@@ -255,29 +260,30 @@ type weatherForecastStatus struct {
 }
 
 func (w *WeatherForecast) getForecast() (wfs []weatherForecastStatus, err error) {
-	resp, err := w.webClient.Get(heweatherForecastUrl)
+	resp, err := w.webClient.Get(heWeatherForecastUrl + "?" + "location=" + location + "&" + "key=" + key)
 	if err != nil {
 		return
 	}
 	if resp.StatusCode != http.StatusOK {
 		err = fmt.Errorf("API Code:%d", resp.StatusCode)
+		return
 	}
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return
 	}
-	wsResp := heWeatherResp{}
+	wsResp := heWeatherForecastRespV7{}
 	log.Printf("get forecast ok")
 	err = json.Unmarshal(body, &wsResp)
 	if err != nil {
 		return
 	}
-	if len(wsResp.HeWeather6) != 1 {
+	/*	if len(wsResp.HeWeather6) != 1 {
 		err = fmt.Errorf("Resp error")
 		return
-	}
-	heWeather6 := wsResp.HeWeather6[0]
-	df := heWeather6.DailyForecast
+	}*/
+	heWeather7 := wsResp
+	df := heWeather7.DailyForecast
 	if len(df) < 3 {
 		err = fmt.Errorf("Resp errpr")
 		return
@@ -307,7 +313,7 @@ func (w *WeatherForecast) getForecast() (wfs []weatherForecastStatus, err error)
 		tmpMin := int(math.Floor(tmp*100 + 0.5))
 		wfsDate, err := time.Parse("2006-01-02", df[i].Date)
 		if err != nil {
-			return wfs,err
+			return wfs, err
 		}
 		s := weatherForecastStatus{
 			Code:   code,
