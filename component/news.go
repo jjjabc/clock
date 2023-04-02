@@ -1,6 +1,7 @@
+// createDate:2020/3/26 下午9:23
+// desc:$END$
+//
 //author:xunj
-//createDate:2020/3/26 下午9:23
-//desc:$END$
 package component
 
 import (
@@ -50,13 +51,13 @@ func NewNews() *News {
 	return &News{notify: make(chan struct{}), img: bg, webClient: client, f: f}
 }
 func (n *News) Run() {
-	ticker := time.NewTicker(5*time.Minute)
+	ticker := time.NewTicker(5 * time.Minute)
 	var cancelFun context.CancelFunc
 	var ctx context.Context
 	ctx, cancelFun = context.WithCancel(context.Background())
 	err := n.getNews()
 	if err != nil {
-		n.disString="错误:5分钟后重试（"+err.Error()+"）"
+		n.disString = "错误:5分钟后重试（" + err.Error() + "）"
 	}
 	if wbImg, ok := n.img.(*wbimage.WB); ok {
 		n.disString = n.String()
@@ -123,6 +124,9 @@ type jdNewsItem struct {
 
 func (n *News) getNews() (err error) {
 	resp, err := n.webClient.Get("https://way.jd.com/jisuapi/get?channel=%E6%96%B0%E9%97%BB&num=10&start=0&appkey=28cef4566c4bd850b11e77a36bd9a5ed")
+	if err != nil {
+		return err
+	}
 	if resp.StatusCode != http.StatusOK {
 		err = fmt.Errorf("API Code:%d", resp.StatusCode)
 	}
@@ -181,15 +185,15 @@ func RollingBanner(ctx context.Context, content string, wbImg *wbimage.WB, speed
 	}
 	_, pt = tools.StringSrcPic(bg, content, sizePx, f, 0, y)
 	width := pt.X - 0
-	contentImg := wbimage.NewWB(image.Rect(0,0,width,wbImg.Bounds().Dy()))
+	contentImg := wbimage.NewWB(image.Rect(0, 0, width, wbImg.Bounds().Dy()))
 	for i := range contentImg.Pix {
 		contentImg.Pix[i] = true
 	}
 	contentImg, _ = tools.StringSrcPic(contentImg, content, sizePx, f, 0, y)
 	ticker := time.NewTicker(d)
 	x := 0
-	dstNRGB:=imaging.Paste(bg,contentImg,image.Pt(x,y))
-	dst:=wbimage.Convert(dstNRGB)
+	dstNRGB := imaging.Paste(bg, contentImg, image.Pt(x, y))
+	dst := wbimage.Convert(dstNRGB)
 	for i := range dst.Pix {
 		wbImg.Pix[i] = dst.Pix[i]
 	}
@@ -203,8 +207,8 @@ func RollingBanner(ctx context.Context, content string, wbImg *wbimage.WB, speed
 			if x+width < 0 {
 				x = wbImg.Bounds().Max.X
 			}
-			dstNRGB:=imaging.Paste(bg,contentImg,image.Pt(x,y))
-			dst:=wbimage.Convert(dstNRGB)
+			dstNRGB := imaging.Paste(bg, contentImg, image.Pt(x, y))
+			dst := wbimage.Convert(dstNRGB)
 			for i := range dst.Pix {
 				wbImg.Pix[i] = dst.Pix[i]
 			}

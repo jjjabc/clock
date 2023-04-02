@@ -1,6 +1,7 @@
 package screen
 
 import (
+	"crypto/tls"
 	"github.com/disintegration/imaging"
 	"github.com/jjjabc/clock/component"
 	"github.com/jjjabc/clock/layout"
@@ -8,6 +9,7 @@ import (
 	"github.com/jjjabc/lcd/wbimage"
 	"image"
 	"image/png"
+	"net/http"
 	"os"
 	"sync"
 )
@@ -60,12 +62,16 @@ func New12864ClockScreen() *Screen {
 				&component.Weather{}, component.NewClock())),
 		bg: bg,
 	}*/
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	//state := c.Query("state")
+	client := &http.Client{Transport: tr}
 	return &Screen{
-		main:
-		layout.NewContainer(layout.Vertical,
+		main: layout.NewContainer(layout.Vertical,
 			layout.NewContainer(layout.Horizontal,
-				component.NewWeather(), component.NewClock()),
-			component.NewWeatherForecast(),
+				component.NewWeather(client), component.NewClock()),
+			component.NewWeatherForecast(client),
 			component.NewNews(),
 			component.NewStatusBar(),
 		),

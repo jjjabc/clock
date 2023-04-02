@@ -87,9 +87,9 @@ func TestWeatherForecast_Render(t *testing.T) {
 
 }
 func TestWeatherForecast_Run(t *testing.T) {
-	w := &Weather{webClient: &http.Client{}}
+	w := &WeatherForecast{webClient: &http.Client{}}
 
-	ws, err := w.getWeatherStatus()
+	ws, err := w.getForecast()
 	if err != nil {
 		panic(err)
 	}

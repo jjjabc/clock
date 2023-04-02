@@ -1,7 +1,6 @@
 package component
 
 import (
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"github.com/disintegration/imaging"
@@ -29,25 +28,31 @@ type WeatherForecast struct {
 	webClient  *http.Client
 	notify     chan struct{}
 	itemRender *forecastItemRender
+	f          *truetype.Font
 }
 
-func NewWeatherForecast() *WeatherForecast {
+func NewWeatherForecast(client *http.Client) *WeatherForecast {
 	img := wbimage.NewWB(image.Rect(0, 0, 126, 19))
 	for i := range img.Pix {
 		img.Pix[i] = true
 	}
 	bg := wbimage.Clone(img)
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+
+	fontBytes, err := ioutil.ReadFile("./resource/04.ttf")
+	if err != nil {
+		panic(err)
 	}
-	//state := c.Query("state")
-	client := &http.Client{Transport: tr}
+	f, err := freetype.ParseFont(fontBytes)
+	if err != nil {
+		panic(err)
+	}
 	return &WeatherForecast{
 		img:        img,
 		bg:         bg,
 		webClient:  client,
 		notify:     make(chan struct{}),
 		itemRender: NewForecastItemRender(),
+		f:          f,
 	}
 }
 
@@ -91,14 +96,17 @@ func (w *WeatherForecast) Run() {
 		ok = true
 		return
 	}
-	_, err := draw()
-	if err != nil {
-		w.renderErr(err)
-		return
-	}
+	w.renderErr(fmt.Errorf("Loading..."))
 	imaging.Save(w.img, "wf.png")
 	go func() {
 		defer ticker.Stop()
+		time.Sleep(10 * time.Second)
+		_, err := draw()
+		if err != nil {
+			w.renderErr(err)
+			log.Println(err)
+			//return
+		}
 		for {
 			select {
 			case <-ticker.C:
@@ -115,7 +123,8 @@ func (w *WeatherForecast) Run() {
 	}()
 }
 func (w *WeatherForecast) renderErr(err error) error {
-	//w.img, _ = tools.StringSrcPic(wbimage.NewWB(image.Rect(0, 0, 47, 19)), err.Error(), 12, w.font, 0, 0)
+	var img image.Image = wbimage.Clone(w.bg)
+	w.img, _ = tools.StringSrcPic(wbimage.Convert(img), err.Error(), 8, w.f, 0, 0)
 	return nil
 }
 func (w *WeatherForecast) render(wfs []weatherForecastStatus) (err error) {

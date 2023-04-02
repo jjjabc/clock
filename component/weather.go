@@ -1,7 +1,6 @@
 package component
 
 import (
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"github.com/golang/freetype"
@@ -39,16 +38,12 @@ type Weather struct {
 	c         image.Image
 }
 
-func NewWeather() *Weather {
+func NewWeather(client *http.Client) *Weather {
 	img := wbimage.NewWB(image.Rect(0, 0, 47, 19))
 	for i := range img.Pix {
 		img.Pix[i] = true
 	}
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	//state := c.Query("state")
-	client := &http.Client{Transport: tr}
+
 	fontBytes, err := ioutil.ReadFile("./resource/12.ttf")
 	if err != nil {
 		panic(err)
@@ -185,6 +180,7 @@ type heWeatherNowRespV7 struct {
 
 func (w *Weather) getWeatherStatus() (ws weaterStatus, err error) {
 	resp, err := w.webClient.Get(heweatherUrl + "?" + "location=" + location + "&" + "key=" + key)
+	//defer w.webClient.CloseIdleConnections()
 	if err != nil {
 		return
 	}
