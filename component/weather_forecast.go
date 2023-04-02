@@ -96,11 +96,11 @@ func (w *WeatherForecast) Run() {
 		ok = true
 		return
 	}
-	w.renderErr(fmt.Errorf("Loading..."))
+	w.renderErr(fmt.Errorf("Loading... Waiting 30 seconds"))
 	imaging.Save(w.img, "wf.png")
 	go func() {
 		defer ticker.Stop()
-		time.Sleep(10 * time.Second)
+		//time.Sleep(30 * time.Second)
 		_, err := draw()
 		if err != nil {
 			w.renderErr(err)
@@ -278,9 +278,11 @@ func (w *WeatherForecast) getForecast() (wfs []weatherForecastStatus, err error)
 		return
 	}
 	body, err := io.ReadAll(resp.Body)
+	defer resp.Body.Close()
 	if err != nil {
 		return
 	}
+	resp.Body.Close()
 	wsResp := heWeatherForecastRespV7{}
 	log.Printf("get forecast ok")
 	err = json.Unmarshal(body, &wsResp)

@@ -131,6 +131,7 @@ func (n *News) getNews() (err error) {
 		err = fmt.Errorf("API Code:%d", resp.StatusCode)
 	}
 	body, err := ioutil.ReadAll(resp.Body)
+	defer resp.Body.Close()
 	if err != nil {
 		return
 	}

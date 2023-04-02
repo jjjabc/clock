@@ -188,9 +188,11 @@ func (w *Weather) getWeatherStatus() (ws weaterStatus, err error) {
 		err = fmt.Errorf("API Code:%d", resp.StatusCode)
 	}
 	body, err := io.ReadAll(resp.Body)
+	defer resp.Body.Close()
 	if err != nil {
 		return
 	}
+	resp.Body.Close()
 	wsResp := heWeatherNowRespV7{}
 	log.Printf("get weather ok")
 	err = json.Unmarshal(body, &wsResp)
